@@ -1,0 +1,19 @@
+\chapter*{Zielsetzung}
+Als Ergebnis der Arbeit soll eine Pipeline entstehen,
+die als Input eine beliebige Zahlenfolge nimmt und daraus ein realistisches Bild eines Stromzählers generiert.
+Das Ziel ist es mithilfe von Image-to-Image Translation Bilder zu generieren, die die Erkennungsleistung eines Modells
+ zum Ablesen von Stromzählerwerten steigert.
+Die Erfüllung dieses Ziels kann anhand eines Benchmarks wie UFPR-AMR\cite{ufpr}, einer Sammlung von Stromzählerbildern, gemessen werden.
+Wenn das Ergebnis positiv ist und die generierten Trainingsdaten eine Steigerung der Erkennungsleistung zur Folge hat,
+könnte das Verfahren dabei helfen, einen realen Zählerstandleser zu entwickeln\footnote{todo: noch etwas über realen Nutze, gesetzliche Pflicht, Strom und kosten sparen...}
+
+Konkret ergeben sich folgende Aufgaben:
+\begin{itemize}
+  \item Recherche und Auswahl aktueller unpaired Image-to-Image Methoden
+  \item Implementierung eines Bildgenerators, der aus Ziffernfolgen synthetische Zählerstandbilder erzeugt
+  \item Implementierung einer unpaired Image-to-Image Methode, die synthetische Zählerstandbilder in realistische Bilder überführt
+  \item Evaluierung mithilfe eines Benchmarks
+\end{itemize}
+
+(sollen selbst Daten gesammelt werden, oder reicht der UFPR-AMR Datensatz?)
+(soll ein Netzwerk zur Erkennung von Stromzählerwerten selbst erstellt werden, oder gibt es ein vorhandenes?)

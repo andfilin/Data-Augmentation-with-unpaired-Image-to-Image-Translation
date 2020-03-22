@@ -1,0 +1,59 @@
+%MAIN-DOCUMENT
+%INCLUDIERT ALLER FILES DER ORDNERSTRUKTUR
+
+% Header beinhaltet Dokumentenklasse sowie includierte Packages
+\input{Header/Header}
+
+%fertigen Kopfzeilenstil aktivieren
+\makroFH-Kopfzeilenstil
+
+%Zeilenabstand * 1.25 (default)
+\renewcommand{\baselinestretch}{1.25}\normalsize
+%(Kommentar entfernen, um Zeilenabstand
+% auf 1,5-fache Groesse zu ueberschreiben)
+%\renewcommand{\baselinestretch}{1.50}\normalsize
+
+%Startpunkt jedes LaTex-Dokuments
+\begin{document}
+
+%<--- Benutze Glossar
+\input{Glossar/Glossar}
+\glsaddall 
+%Benutze Glossar --->
+
+%Verwende Muster-Titelseite 
+\include{Titelseite/titelseite}
+%Füge leere Seite ein (optional)
+\input{leereSeite}
+%Verwende Muster-Erklärung zur selbstständigen Arbeit 
+\include{Erklaerung/Erklaerung}
+%Füge leere Seite ein (optional)
+\input{leereSeite}
+%Verwende Muster-Abstract 
+\input{Abstract/Abstract}
+
+
+%Liste Menüpunkte als Inhaltsverzeichnis
+\tableofcontents
+\setcounter{page}{1}
+
+%Jedes Kapitel in eigener Ordnerstruktur 
+%1.Kapitel ist die Zusammenfassung
+\input{Kapitel2/Kapitel2-Text/Kapitel2-Text}
+\input{Kapitel3/Kapitel3-Text/Kapitel3-Text}
+\input{Kapitel4/Kapitel4-Text/Kapitel4-Text}
+\input{Kapitel5/Kapitel5-Text}
+
+% <--- BibTex mit Stil alpha
+\bibliography{Bibliothek}{}
+\bibliographystyle{alpha}
+% BibTex mit Stil alpha --->
+ 
+% Abbildungsverzeichnis, Tabellenverzeichnis und Glossar ausgeben
+\listoffigures
+\listoftables
+\printglossaries 
+
+%Ende jedes LaTex-Dokuments
+\end{document}
+

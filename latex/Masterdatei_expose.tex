@@ -1,0 +1,51 @@
+%MAIN-DOCUMENT
+%INCLUDIERT ALLER FILES DER ORDNERSTRUKTUR
+
+
+
+% Header beinhaltet Dokumentenklasse sowie includierte Packages
+\input{Header/Header}
+\usepackage{url}
+
+
+%fertigen Kopfzeilenstil aktivieren
+\makroFH-Kopfzeilenstil
+
+%Zeilenabstand * 1.25 (default)
+\renewcommand{\baselinestretch}{1.25}\normalsize
+
+%Startpunkt jedes LaTex-Dokuments
+\begin{document}
+
+%<--- Benutze Glossar
+%\input{Glossar/Glossar}
+%\glsaddall 
+%Benutze Glossar --->
+
+%Verwende Muster-Titelseite 
+\include{Titelseite/expose_titelseite}
+%Füge leere Seite ein (optional)
+%\input{leereSeite}
+%Verwende Muster-Erklärung zur selbstständigen Arbeit 
+%\include{Erklaerung/Erklaerung}
+%Füge leere Seite ein (optional)
+%\input{leereSeite}
+%Verwende Muster-Abstract 
+%\input{Abstract/Abstract}
+
+% Inhalt
+\input{expose/expose.tex}
+
+% <--- BibTex mit Stil alpha
+\bibliography{expose/Bibliothek}{}
+\bibliographystyle{alpha}
+% BibTex mit Stil alpha --->
+ 
+% Abbildungsverzeichnis, Tabellenverzeichnis und Glossar ausgeben
+%\listoffigures
+%\listoftables
+%\printglossaries 
+
+%Ende jedes LaTex-Dokuments
+\end{document}
+

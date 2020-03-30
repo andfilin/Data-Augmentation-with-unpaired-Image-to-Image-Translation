@@ -1,13 +1,13 @@
 \chapter*{Problemstellung}
 Ziel der Arbeit ist es die Erkennungleistung eines Neuronalen Netzes zum Ablesen von Stromzählerwerten zu verbessern, indem
-neue Trainingsdaten durch Image-to-Image Translation generiert werden.
+neue Trainingsdaten durch unpaired Image-to-Image Translation generiert werden.
 
 Die Leistung eines Neuronalen Netzes hängt ab von der verwendeten Trainingsdatenmenge. Diese sollte möglichst groß sein und das zu lösende Problem gut abdecken.
 Doch nicht immer ist eine solche Datenmenge gegeben: Die Beschaffung von Daten bestimmter Probleme kann zu aufwendig für eine große Datenmenge sein,
 oder die Verteilung der Klassen innerhalb der Datenmenge kann ungleichmäßig sein.
 Der Begriff "`Data Augmentation"' fasst Methoden zusammen die den Trainingsdatensatz erweitern, indem vorhandene Daten verarbeitet werden.
 Um die Robustheit des Modells zu erhöhen können beispielsweise Bilder gedreht, gespiegelt oder mit Rauschen versehen werden.
-Zur Ausbalancierung der Klassenverteilung können etwa Dateninstanzen einer unterepräsentierten Klasse dupliziert werden.
+Zur Ausbalancierung der Klassenverteilung können Dateninstanzen einer unterepräsentierten Klasse dupliziert werden.
 Eine weitere Möglichkeit Trainingsdaten zu erweitern bieten Generative Networks.
 2017 beschäftigten sich Wang et al\cite{lplate} mit der Erkennung von KFZ-Nummernschildern und lösten das Problem ungleichmäßiger Klassenverteilung in ihren Trainingsdaten
 (d.h. bestimmte Zeichen kommen in realen Nummernschildern häufiger vor als andere). Dazu verwendeten sie CycleGAN\cite{cyclegan}, eine Variation von Generative Adversial Networks,
@@ -16,5 +16,5 @@ um synthetische Nummernschilder mit selbstgewähltem Inhalt in realistische Numm
 Die Ergebnisse dieses Papers legen nahe, solch eine Herangehensweise auch auf andere Probleme anzuwenden.
 Ein Anwendungsfall mit ähnlichen Problemen ist das Ablesen von Stromzählerwerten mithilfe einer Kamera: Auch hier weisen Trainingsdaten (Bilder realer Stromzähler)
 eine ungleichmäßige Klassenverteilung auf (bestimmte Ziffern sind häufiger als andere).
-Es stellt sich die Frage, ob die Generierung zusätzlicher Trainingsdaten durch Image-to-Image Translation Techniken wie CycleGAN für dieses Problem 
+Es stellt sich die Frage, ob die Generierung zusätzlicher Trainingsdaten durch unpaired Image-to-Image Translation Techniken wie CycleGAN auch für dieses Problem 
 eine Steigerung der Erkennungsleistung bewirken kann.

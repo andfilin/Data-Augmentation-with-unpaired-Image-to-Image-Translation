@@ -1,2 +1,24 @@
 \chapter*{Methoden}
-todo
+Zur Erfüllung der obengenannten Ziele ergeben sich folgende Aufgaben:
+\section*{Recherche aktueller unpaired Image-To-Image Translation Methoden}
+CycleGANs wurden erstmals 2017 vorgestellt, seitdem sind zahlreiche weitere unpaired Image-To-Image Translation Methoden erschienen.
+Es muss eine Suche und Auswahl einer (bzw. mehrerer) dieser Methoden durchgeführt werden, die im Rahmen dieser Arbeit implementiert werden.
+Hierzu können moderne Suchmaschinen wie semanticscholar oder google scholar verwendet werden.
+\section*{Datenbeschaffung}
+Sowohl für die Image-To-Image Translation als auch für die Klassifizierung werden Trainingsdaten, Bilder von Stromzählern, benötigt.
+Einerseits bietet der UFPR-AMR Datensatz 2000 Bilder. Sollte sich diese Datenmenge als zu gering herausstellen, wäre auch eine Umfrage denkbar,
+bei der Studenten der Hochschule Landshut per Rundmail um ein mit dem Smartphone geschossenes Foto ihres Stromzählers gebeten werden.
+\section*{Erstellung eines Generators synthetischer Zählerstandbilder}
+Der erste Teil der obenbeschriebenen Pipeline ist ein Bildgenerator, der aus einer beliebigen Ziffernfolge ein synthetisches Bild eines Stromzählers generiert.
+Diese Bilder haben nicht den Anspruch realistisch sein, und können also durch Skripts generiert werden, etwa mit openCV oder als SVG-Bild.
+\section*{Implementierung einer unpaired Image-To-Image Translation Methode}
+Die gewählte Image-To-Image Translation Methode soll implementiert und jeweils mit generierten synthetischen und realen Bildern aus den Trainigsdaten trainiert werden,
+sodass das Modell synthetische Bilder in realistische überführt.
+\section*{Evaluation}
+Mit der fertigen Pipeline können aus beliebigen Ziffernfolgen realistische Bilder von Stromzählern generiert und damit der bestehende Datensatz erweitert werden.
+Die Qualität hiervon lässt sich dann bestimmen, indem man zwei Instanzen desselben Klassifizierermodells vergleicht: Eines trainiert man nur mit den ursprünglich
+vorhandenen Daten, das andere zusätzlich mit den generierten.
+Idealerweise weist das Modell, welches zusätzlich mit generierten Daten trainiert wurde, eine höhere Erkennungsrate auf.
+Im ersten Anlauf wird aber eher erwartet, dass das Ergebnis nicht so positiv ausfällt. Deshalb seien obige Aufgaben nicht als einmalige Arbeitsschritte anzusehen, 
+sie sollen eher in einem iterativem Prozess abgearbeitet werden. Ist das Endergebnis nicht zufriedenstellend, sollen sowohl die Auswahl der verwendeten
+Image-To-Image Translation Methode, als auch die Trainigsdaten, der Generator synthetischer Bilder und die Implementierung der Image-To-Image Methode überdacht werden.

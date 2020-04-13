@@ -1,0 +1,13 @@
+2020-04-12 09:41:01.215928		model created
+2020-04-12 09:41:01.220917		starting training. Epochs = 4, imagesPerDomain = 500
+2020-04-12 10:43:20.544121		finished training after 3739.323204 seconds
+2020-04-12 10:43:20.545099		total: 1 sessions and 4 epochs completed.
+2020-04-12 11:18:21.513146		starting training. Epochs = 4, imagesPerDomain = 500
+2020-04-12 12:20:22.162836		finished training after 3720.647667 seconds
+2020-04-12 12:20:22.163805		total: 2 sessions and 8 epochs completed.
+2020-04-12 15:00:19.619317		starting training. Epochs = 4, imagesPerDomain = 500
+2020-04-12 16:02:14.211799		finished training after 3714.590528 seconds
+2020-04-12 16:02:14.211799		total: 3 sessions and 12 epochs completed.
+2020-04-12 17:33:06.962343		starting training. Epochs = 4, imagesPerDomain = 500
+2020-04-12 18:35:01.031555		finished training after 3714.067218 seconds
+2020-04-12 18:35:01.031555		total: 4 sessions and 16 epochs completed.

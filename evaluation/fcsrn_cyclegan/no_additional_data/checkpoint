@@ -1,0 +1,4 @@
+model_checkpoint_path: "epoch-100"
+all_model_checkpoint_paths: "epoch-100"
+all_model_checkpoint_timestamps: 1587988314.6480236
+last_preserved_timestamp: 1587984312.101003

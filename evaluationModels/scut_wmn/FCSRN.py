@@ -1,3 +1,11 @@
+# add root dir to syspath
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+#parent_dir = os.path.dirname(current_dir)
+#root_dir = os.path.dirname(parent_dir)
+sys.path.insert(0, current_dir)
+
+
 from A_FullyConvolutionalNet import convNet
 from B_TemporalMapper import temporalMapper
 
@@ -110,7 +118,7 @@ class fcsrn():
             resultLabels = tf.dtypes.cast(decoded[0], tf.int32)
             
             # iterate every labelpair of this batch
-            for result, truth in zip(resultLabels, y_batch):
+            for result, truth, image in zip(resultLabels, y_batch, x_batch):
                 # get sparse tensors of labels
                 result_sparse = self._labelToSparse(result)
                 truth_sparse = self._labelToSparse(truth)
@@ -123,7 +131,7 @@ class fcsrn():
                     total_correctLines += 1
                 else:
                     mismatches.append(
-                        (result, truth, distance)
+                        (result.numpy(), truth.numpy(), distance.numpy(), image.numpy())
                     )
                 # add distance to total
                 sum_editdistance += distance

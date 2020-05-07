@@ -60,6 +60,10 @@ class cyclegan():
                 self.checkpoint.restore(checkpoint_to_be_loaded)
                 print("loaded checkpoint: ", checkpoint_to_be_loaded)
             else:
+                # save inputshape in file
+                shapeString = "%d,%d,%d" % (image_shape[0],image_shape[1],image_shape[2])
+                shapeFile = checkpoint_path / "inputshape"
+                shapeFile.write_text(shapeString)
                 print("created new Model")
         else:
             self.checkpoint = None
@@ -178,5 +182,20 @@ class cyclegan():
         self.gen_BtoA_optimizer.apply_gradients(zip(gen_BtoA_gradients, self.gen_BtoA.trainable_variables))
         self.disc_A_optimizer.apply_gradients(zip(disc_A_gradients, self.disc_A.trainable_variables))  
         self.disc_B_optimizer.apply_gradients(zip(disc_B_gradients, self.disc_B.trainable_variables))
+        
+    ####
+    # normalizes image to -1,1 and converts 3-channel.
+    ####
+    def preprocess_input(self, imageTensor):
+        # reshape (h,w) -> (h,w,1)
+        if len(imageTensor.shape) == 2:
+            imageTensor = tf.reshape(imageTensor, (imageTensor.shape[0], imageTensor.shape[1], 1))
+            # duplicate last dimension
+            imageTensor = tf.repeat(imageTensor, 3, axis=-1) # should be the same as cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        # to float
+        imageTensor = tf.cast(imageTensor, tf.float32)
+        # normalize
+        imageTensor = (imageTensor / 127.5) - 1
+        return imageTensor
         
    

@@ -1,3 +1,8 @@
+# add current dir to syspath
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0, current_dir)
+
 import cv2
 from pathlib import Path
 from matplotlib import pyplot as plt
@@ -6,6 +11,8 @@ import numpy as np
 import time
 import pickle
 import random
+#from imageGenerators\
+import load_digits
 
 """
 Generates synthetic images of metervalues by stitching together images of digits.
@@ -15,8 +22,12 @@ Args:
         digitImages.shape == (10, n_fonts, w,h,c)
 """
 class synth_generator:
-    def __init__(self, digitImages, vertical_margin = 10):
-        self.digitImages = digitImages.copy()
+    def __init__(self, digitImages=None, vertical_margin = 20, digitsetPath="C:/Users/andre/Desktop/m/datasets/Chars74K/English/Fnt"):
+        if digitImages==None:
+            dsPath = Path(digitsetPath)
+            self.digitImages = load_digits.load_char74k(dsPath, fonts=[28])
+        else:
+            self.digitImages = digitImages.copy()
         self.prepare_midstateDigits(verticalMargin = vertical_margin)
 
     
@@ -135,7 +146,7 @@ class synth_generator:
     # inputs:
     #  digits-list<integer>: contains digits to use
     #  verticalShifts -list<float>: for each digit, how far it should be scrolled down (between -1,1)
-    #  margins-list<integer>: for every digit (except the last), distance to his right neighbour.
+    #  margins-list<integer>: for every digit (except the last), distance to his right neighbour. either single int or list of ints.
     #                length must be len(digits) - 1
     #  border-list<integer>: (top, bottom, left, right) padding of resultimage
     #  width, height - <integers>: target resolution to scale to (if both greater 0)
@@ -147,6 +158,9 @@ class synth_generator:
     #                          0 -> no scrolling, 0.5 -> scroll halfway to next("higher-value") digit, 1 -> scroll to next digit
     ####
     def generate_image(self, digits, margins, border, width=0, height=0, font=0, padding_value=255, draw_vertical_seperators=False, range_normal=(0,0), range_midstate=(0.5,0.5)):
+        # if margins is single int, make list
+        if isinstance(margins, int):
+            margins = [margins for _ in range(0, len(digits) - 1)]
         
         assert (len(margins) == len(digits) - 1), "wrong number of margins. Expected: %d; Got: %d" % (len(digits) - 1, len(margins))
         fullmargins = margins.copy()  # make true copy of margins-list instead of using reference

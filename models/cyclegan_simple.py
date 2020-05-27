@@ -21,7 +21,7 @@ CycleGAN as class.
 based on implementetation from:
 https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
 
-No further changes for the task of meterValueTranslation was made.
+No further changes for the task of meterValueTranslation were made.
 
 Usage:
     1. create cyclegan-instance by supplying list: (imagesDomainA, imagesDomainB) as dataset.

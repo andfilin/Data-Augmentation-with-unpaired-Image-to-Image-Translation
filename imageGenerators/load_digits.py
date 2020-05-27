@@ -6,7 +6,7 @@ from os import listdir
 import cv2
 # loads from the char74k dataset.
 # returns: array containing: for each digit array of images of that digit, possibly from different fonts. (for now: only one font) 
-def load_char74k(datasetPath, imread_mode=cv2.IMREAD_GRAYSCALE, fonts=[0]):
+def load_char74k(datasetPath, imread_mode=cv2.IMREAD_GRAYSCALE, fonts=[28]):
     # get folder of every digit (Sample001 - Sample 010)
     digitFolders = [
         datasetPath / ("Sample00" + str(digit)) for digit in range(1,10)

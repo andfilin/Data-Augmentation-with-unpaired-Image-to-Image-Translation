@@ -1,0 +1,21 @@
+	FIDs for n_images = 1000
+--------------------
+Epoch 0:
+fid(gen, wmn_easy) =	270.748896
+fid(gen, wmn_difficult) =	307.352898
+--------------------
+Epoch 2:
+fid(gen, wmn_easy) =	237.388191
+fid(gen, wmn_difficult) =	310.721069
+--------------------
+Epoch 4:
+fid(gen, wmn_easy) =	260.945038
+fid(gen, wmn_difficult) =	274.214098
+--------------------
+Epoch 6:
+fid(gen, wmn_easy) =	261.784441
+fid(gen, wmn_difficult) =	298.666784
+--------------------
+Epoch 8:
+fid(gen, wmn_easy) =	251.088602
+fid(gen, wmn_difficult) =	294.084101

@@ -1,7 +1,13 @@
+# add current dir to syspath
+import os,sys,inspect
+current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0, current_dir)
+
 from pathlib import Path
 import pickle
 import fid
 from time import time
+import numpy as np
 import tensorflow.compat.v1 as tf_v1
 #tf_v1.disable_v2_behavior()
 
@@ -37,6 +43,21 @@ def stats_exist(statfile):
 # given an array of images, calculates fid-stats == (mu, sigma) used for calculating fid
 ###
 def calculate_stats(imageset, batch_size=default_batchsize, printTime=False):
+    ###
+    # inception-net expects shape (n,w,h,3)
+    ###
+    # if shape == (n,w,h), reshape to (n,w,h,1)
+    if len(imageset.shape) < 4: # need shape: (n, height, width, 3)
+        # reshape to (n,h,w,1)
+        shape = list(imageset.shape)
+        shape.append(1)
+        imageset = np.reshape(imageset, shape)
+    ###
+    # if shape == (n,w,h,1), duplicate channel: -> (n,w,h,3)
+    if imageset.shape[3] == 1:
+        # repeat channel
+        imageset = np.repeat(imageset, 3, axis=-1)
+        
     starttime = time()
     with tf_v1.Session() as sess:
         sess.run(tf_v1.global_variables_initializer())

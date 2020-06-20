@@ -9,13 +9,17 @@ from models.common_functions import plot_comparisonImage
 import submodels
 from ganMetrics.FID import FID_interface
 from ganMetrics.GS import GS_interface
+#from ganMetrics.save_samples import plot_samples
 
 import tensorflow as tf
 import time
 import pandas as pd
 import random
 import numpy as np
+from matplotlib import pyplot as plt
 from IPython.core.debugger import set_trace
+
+from modelParameterNames import parameters as params
 
 """
 cycleganmodel, based on:
@@ -34,10 +38,25 @@ args:
     poolsize: how many fakeimages to buffer
 """
 class cyclegan():
-    def __init__(self, image_shape, adversial_loss, lr=2e-4, _lambda = 10, checkpoint_path = None, load_checkpoint_after_epoch=None, poolsize=50):
-        self._lambda = _lambda
-        self.checkpoint_path = checkpoint_path
+            
+    def __init__(self, image_shape, n_images, batchsize, adversial_loss, lr=2e-4, _lambda = 10, checkpoint_path = None, load_checkpoint_after_epoch=None, poolsize=50):
+        # store all parameters to log them later
+        self.parameters = {
+            params.model.value: self.__module__,            
+            params.imageshape.value: image_shape,
+            params.n_images.value: n_images,
+            params._lambda.value: _lambda,
+            params.lr.value: lr,
+            params.adversial_lossfunction.value: adversial_loss,
+            params.poolsize.value: poolsize,
+            params.epochs_trained.value: 0,
+            params.trainingsessions.value: 0,
+            params.batchsize.value: batchsize,    
+        }
         
+        self.image_shape = image_shape
+        self._lambda = _lambda
+        self.checkpoint_path = checkpoint_path        
         if adversial_loss == "mse":
             self.adversial_loss = tf.keras.losses.MeanSquaredError()
         elif adversial_loss == "bce":
@@ -48,6 +67,10 @@ class cyclegan():
         
         
         n_channels = 1 if len(image_shape) == 2 else image_shape[2]
+        
+        ####
+        # Initialize Model (create generators, discriminators, optimizers)
+        ####        
         # submodels
         self.gen_AtoB = submodels.generator(image_shape)
         self.gen_BtoA = submodels.generator(image_shape)
@@ -58,13 +81,17 @@ class cyclegan():
         self.gen_BtoA_optimizer = tf.keras.optimizers.Adam(lr, beta_1=0.5)
         self.disc_A_optimizer = tf.keras.optimizers.Adam(lr, beta_1=0.5)
         self.disc_B_optimizer = tf.keras.optimizers.Adam(lr, beta_1=0.5)
-        # fakeimagepools
+        
+        # init pools of generated images
         self.poolsize = poolsize
         self.pool_A = []
         self.pool_B = []
         
+        ####
         # prepare checkpoint
+        ####
         if checkpoint_path != None:
+            # init checkpoint
             self.checkpoint = tf.train.Checkpoint(
                 gen_AtoB = self.gen_AtoB,
                 gen_BtoA = self.gen_BtoA,
@@ -75,22 +102,29 @@ class cyclegan():
                 disc_A_optimizer = self.disc_A_optimizer,
                 disc_B_optimizer = self.disc_B_optimizer                
             )
-            self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, checkpoint_path, max_to_keep=None, checkpoint_name="epoch")
-            # load existing checkpoint if it exists
+            self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, 
+                                                                 checkpoint_path, 
+                                                                 max_to_keep=None, 
+                                                                 checkpoint_name="epoch")
+            # check whether any checkpoint already exists
             if self.checkpoint_manager.latest_checkpoint:
                 # load latest checkpoint if none specified
                 if load_checkpoint_after_epoch == None:
                     checkpoint_to_be_loaded = self.checkpoint_manager.latest_checkpoint
                 else:
                     checkpoint_to_be_loaded = str(checkpoint_path / ("epoch-%d" % (load_checkpoint_after_epoch)))
-                # load checkpoint                                                                    
+                # load checkpoint; load parameters(for logging purposes)                                                                  
                 self.checkpoint.restore(checkpoint_to_be_loaded)
+                self.load_parameters()
                 print("loaded checkpoint: ", checkpoint_to_be_loaded)
             else:
-                # save inputshape in file
+                # no checkpoint exists,
+                # save inputshape in file, save parameters in file
                 shapeString = "%d,%d,%d" % (image_shape[0],image_shape[1],image_shape[2])
                 shapeFile = checkpoint_path / "inputshape"
                 shapeFile.write_text(shapeString)
+                
+                self.log_parameters()
                 print("created new Model")
         else:
             self.checkpoint = None
@@ -103,6 +137,9 @@ class cyclegan():
     ####
     #@tf.function
     def update_pool(self, pool, new_images):
+        if self.poolsize == 0:
+            return new_images
+        
         result = tf.TensorArray(tf.float32, dynamic_size=True, size=1)       
         resultIndex = 0        
         for image in new_images:            
@@ -121,7 +158,6 @@ class cyclegan():
                 result = result.write(resultIndex,image); resultIndex += 1
 
         result = result.stack()
-        #import pdb; pdb.set_trace()
         return result
     
     ####
@@ -134,10 +170,11 @@ class cyclegan():
     #    epochs: number of epochs to train
     #    epochs_before_save: After how many epochs checkpoint is to be saved, and a sample to be generated
     #    loss_logsPerEpoch: how often to log losses every epoch
-    def train(self, inputimages_A, inputimages_B, testimages_A=None, n_testimages=0, epochs=4, epochs_before_save = 2, metricsData=None, loss_logsPerEpoch=10):
+    def train(self, inputimages_A, inputimages_B, testimages_A=None, epochs=4, epochs_before_save = 1, metricsData=None, loss_logsPerEpoch=10, pauseBetweenEpochs=120):
         trainstart = time.time()
-        totalsteps = len(list(inputimages_A))
+        totalsteps = tf.data.experimental.cardinality(inputimages_A).numpy()
         steps_before_log = int(totalsteps / loss_logsPerEpoch)
+        steps_before_log = max(steps_before_log, 1) # in case loss_logsPerEpoch > totalsteps
         epochs_already_trained = self.checkpoint.save_counter * epochs_before_save
         # iterate epochs
         for epoch in range(1, epochs + 1):
@@ -158,6 +195,9 @@ class cyclegan():
                     losses_list.append(losses)                    
                 step += 1                
              
+            
+            self.parameters[params.epochs_trained.value] += 1
+            
             # log losses as html
             self.log_losses(losses_list, epoch + epochs_already_trained) 
            
@@ -165,23 +205,24 @@ class cyclegan():
             # if checkpoint exists, save after every <epochs_before_save> epochs
             if self.checkpoint != None:
                 totalEpochs = (self.checkpoint.save_counter + 1) * epochs_before_save                
-                # every <epochs_before_save> epochs,                                                                   
+                # every <epochs_before_save> epochs,
                 if (epoch % epochs_before_save) == 0:
-                    # save checkpoint                                                               
+                    # save checkpoint -                                                              
                     savepath = self.checkpoint_manager.save(checkpoint_number=totalEpochs)
+                    # - and save parameters (only number of trained epochs changed)
+                    self.log_parameters()
                     print("saved to: {}".format(savepath))
+                    
                     # additionaly create and save figure of samples if testimages are specified
                     if testimages_A != None:
-                        figureSavepath = self.checkpoint_path / ("sample_epoch_%d.png" % (totalEpochs))
-                        figWidth = 8 # in inches <-> 2.54cm
-                        figHeight = 2 * n_testimages
-                        plot_comparisonImage(self.gen_AtoB, self.gen_BtoA, testimages_A, figWidth, figHeight, figureSavepath)
-                    # additionaly calculate fid
-                    if not metricsData is None:
-                        metricsSavepath = self.checkpoint_path / "FID.txt"
-                        #self.caluclateMetrics(metricsData, metricsSavepath, totalEpochs)
+                        self.save_sample(totalEpochs, testimages_A)
+                        
+            # sleep after every epoch to reduce strain and heat-builtup on gpu
+            time.sleep(pauseBetweenEpochs)
             
         print("Training finished: %f seconds" % (time.time() - trainstart))
+        self.parameters[params.trainingsessions.value] += 1
+        self.log_parameters()
             
         
     ####    
@@ -227,7 +268,6 @@ class cyclegan():
             gen_A = self.gen_BtoA(real_B, training=True)
             cycle_B = self.gen_AtoB(gen_A, training=True)
             # pooled generated images for discriminatorlosses
-            #import pdb; pdb.set_trace()
             gen_B_pooled = self.update_pool(self.pool_B, gen_B)
             gen_A_pooled = self.update_pool(self.pool_A, gen_A)
             
@@ -323,6 +363,45 @@ class cyclegan():
         with htmlpath.open("a") as f:
             f.write("Epoch %d\n" % (epoch) )
             f.write(html_text)
+    
+    ####
+    # write each parameter from map self.parameters to a file.
+    ####
+    def log_parameters(self):
+        if self.checkpoint_path is None:
+            return
+        paramFile = self.checkpoint_path / "parameters.txt"
+        if not paramFile.exists():
+            paramFile.touch()
+            
+        text = ""
+        for key, value in self.parameters.items():
+            text += "%s:\t%s\n" % (key, value)
+            
+        paramFile.write_text(text)
+    ####
+    # load parameters from a file created by "log_parameters()" 
+    # into dict "self.parameters"
+    ####
+    def load_parameters(self):
+        assert not self.checkpoint_path is None, "tried to load parameters, but no path given"
+        paramFile = self.checkpoint_path / "parameters.txt"
+        if not paramFile.exists():
+            print("No parameterfile in loaded Model")
+            return
+        paramsText = paramFile.read_text()
+        
+        # each line has form: "paramName:\tparamValue"
+        lines = paramsText.split("\n")[0:-1] # slice out last line <== empty newline
+        for param, value in [line.split(":\t") for line in lines]:
+            self.parameters[param] = value
+        
+        # cast epochcount to int
+        self.parameters[params.epochs_trained.value] = int(self.parameters[params.epochs_trained.value])
+        self.parameters[params.trainingsessions.value] = int(self.parameters[params.trainingsessions.value])
+        
+        
+        
         
     ####
     # Generate Images from images in metricsData[0];
@@ -377,4 +456,45 @@ class cyclegan():
     def denormalize_output(self, imageTensor):
         imageTensor = (imageTensor + 1) * 127.5
         return imageTensor
+    
+    ####
+    # 
+    ####
+    def save_sample(self, epoch, testImageDataset, figDims=(16,20)):
+        # prepare path
+        sample_folder = self.checkpoint_path / "samples"
+        if not sample_folder.exists():
+            sample_folder.mkdir()
+        sample_file = sample_folder / ("epoch_%d.png" % (epoch) )
+        
+        # 3 sets of images per sample
+        translatedImages = self.gen_AtoB.predict(testImageDataset) # n,h,w,1; -1,1
+        cycledImages = self.gen_BtoA.predict(translatedImages)
+        inputImages = np.array( list(testImageDataset.as_numpy_iterator()) ) # n,b,h,w,1
+        
+        n_classes = inputImages.shape[0]
+        assert n_classes == 20
+        
+        # make figure
+        fig, a = plt.subplots(n_classes,3, figsize=figDims, linewidth=1)
+        for i in range(0,n_classes):
+            # first column: translated images
+            #                               n,h,w,1
+            a[i][0].imshow(translatedImages[i,:,:,0], cmap="gray", vmin=-1,vmax=1)
+            a[i][0].axis("off")
+            # second column: inputimages
+            #                          n,b,h,w,1
+            a[i][1].imshow(inputImages[i,0,:,:,0], cmap="gray", vmin=-1,vmax=1)
+            a[i][1].axis("off")
+            # third column: cycled images
+            a[i][2].imshow(cycledImages[i,:,:,0], cmap="gray", vmin=-1,vmax=1)
+            a[i][2].axis("off")
+        a[0][0].set_title("translated")
+        a[0][1].set_title("input")
+        a[0][2].set_title("cycled")
+        
+        # save 
+        fig.tight_layout(pad=0.5)
+        fig.savefig(sample_file)
+        
     

@@ -49,8 +49,9 @@ def resize_image(image, dims, keepRatio=False):
 
 ####
 # For a given file of commaseperated imagepaths and labels, load images.
+# processImage: function to apply to image before resizing (in-place)
 ####
-def load_from_txt(txt_path, n_toLoad = None, seperators="[ ,]", resizeTo=None, keepRatio=False, imread_mode = IMREAD_GRAYSCALE, shuffleData=True):
+def load_from_txt(txt_path, n_toLoad = None, seperators="[ ,]", resizeTo=None, keepRatio=False, imread_mode = IMREAD_GRAYSCALE, shuffleData=True, processImage=None):
     images = []
     labels = []
     df = pd.read_csv(txt_path, sep=seperators ,header=None)   
@@ -66,21 +67,23 @@ def load_from_txt(txt_path, n_toLoad = None, seperators="[ ,]", resizeTo=None, k
         imagepath = str(Path(WMN_PATH) / row[0])
         label = row[1:]
         image = imread(imagepath, imread_mode)
+        if not processImage is None:
+            processImage(image)
         if not resizeTo is None:
             image = resize_image(image, resizeTo, keepRatio)
         images.append(image)
         labels.append(label)
-    return (np.array(images), np.array(labels))
+    return (np.array(images), np.array(labels).astype("int"))
 
-def load_wmr_easy(n_toLoad = None, resizeTo=None, keepRatio=False):
+def load_wmr_easy(n_toLoad = None, resizeTo=None, keepRatio=False, processImage=None):
     txt_path = Path(WMN_PATH) / "easy_samples.txt"
-    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio)
-def load_wmr_diff_train(n_toLoad = None, resizeTo=None, keepRatio=False):
+    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio, processImage=processImage)
+def load_wmr_diff_train(n_toLoad = None, resizeTo=None, keepRatio=False, processImage=None):
     txt_path = Path(WMN_PATH) / "difficult_samples_for_train.txt"
-    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio)
-def load_wmr_diff_test(n_toLoad = None, resizeTo=None, keepRatio=False):
+    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio, processImage=processImage)
+def load_wmr_diff_test(n_toLoad = None, resizeTo=None, keepRatio=False, processImage=None):
     txt_path = Path(WMN_PATH) / "difficult_samples_for_test.txt"
-    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio)
+    return load_from_txt(txt_path, n_toLoad=n_toLoad, seperators="[ ,]", resizeTo=resizeTo, keepRatio=keepRatio, processImage=processImage)
 
 
 # args:

@@ -13,6 +13,7 @@ from ganMetrics.GS import GS_interface
 import tensorflow as tf
 import time
 from IPython.core.debugger import set_trace
+import pandas as pd
 
 """
 cycleganmodel, based on:
@@ -27,10 +28,17 @@ args:
     load_checkpoint_after_epoch: If given, loads a specific checkpoint from checkpoint_path. Else loads latest checkpoint
 """
 class cyclegan():
-    def __init__(self, image_shape, lr=None, _lambda = 10, _lamda_gen=1, checkpoint_path = None, load_checkpoint_after_epoch=None):
+    def __init__(self, image_shape, adversial_loss, lr=2e-4, _lambda = 10, checkpoint_path = None, load_checkpoint_after_epoch=None, poolsize=50):
         self._lambda = _lambda
-        self._lamda_gen = _lamda_gen
         self.checkpoint_path = checkpoint_path
+        
+        if adversial_loss == "mse":
+            self.adversial_loss = tf.keras.losses.MeanSquaredError()
+        elif adversial_loss == "bce":
+            self.adversial_loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+        else:
+            raise Exception("Unknown adversial lossfunction: %s" % (adversial_loss) )
+        
         n_channels = 1 if len(image_shape) == 2 else image_shape[2]
         # submodels
         self.gen_AtoB = submodels.generator(image_shape)
@@ -43,6 +51,10 @@ class cyclegan():
         self.gen_BtoA_optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr)#tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
         self.disc_A_optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr)#tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
         self.disc_B_optimizer = tf.keras.optimizers.RMSprop(learning_rate=lr)#tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+        # fakeimagepools
+        self.poolsize = poolsize
+        self.pool_A = []
+        self.pool_B = []
         # prepare checkpoint
         if checkpoint_path != None:
             self.checkpoint = tf.train.Checkpoint(
@@ -75,6 +87,33 @@ class cyclegan():
         else:
             self.checkpoint = None
             print("No checkpointpath given, model will not be saved.")
+            
+            
+    ####
+    # inserts new_images into pool.
+    # if full, randomly replace and return old image, or just return new_image    
+    ####
+    #@tf.function
+    def update_pool(self, pool, new_images):
+        result = tf.TensorArray(tf.float32, dynamic_size=True, size=1)       
+        resultIndex = 0        
+        for image in new_images:            
+            if len(pool) < self.poolsize:
+                # pool not full
+                pool.append(image)
+                result = result.write(resultIndex,image); resultIndex += 1
+            elif random.uniform(0,1) < 0.5:
+                # pool full, replace random image
+                index_replaced = random.randint(0,self.pool_size - 1) # stop is inclusive
+                image_replaced = pool[index_replaced]
+                pool[index_replaced] = image
+                result = result.write(resultIndex,image_replaced); resultIndex += 1
+            else:
+                # pool full, return image without insertion
+                result = result.write(resultIndex,image); resultIndex += 1
+
+        result = result.stack()
+        return result
     
     ####
     # main training function
@@ -86,42 +125,49 @@ class cyclegan():
     #    n_testimages: number of images in testimages_A
     #    epochs: number of epochs to train
     #    epochs_before_save: After how many epochs checkpoint is to be saved, and a sample to be generated
-    def train(self, inputimages_A, inputimages_B, d_iter=None, testimages_A=None, n_testimages=0, epochs=4, epochs_before_save = 2, metricsData=None, clip_range=0.01):
+    def train(self, inputimages_A, inputimages_B, d_iter=None, testimages_A=None, n_testimages=0, epochs=4, epochs_before_save = 2, metricsData=None, clip_range=0.01, loss_logsPerEpoch=10):
         trainstart = time.time()
+        totalsteps = len(list(inputimages_A))
+        steps_before_log = int(totalsteps / loss_logsPerEpoch)
+        epochs_already_trained = self.checkpoint.save_counter * epochs_before_save
         # iterate epochs
-        for epoch in range(epochs + 1):
+        for epoch in range(1, epochs + 1):
             print("epoch %d:" % (epoch) )
             epochstart = time.time()
+            losses_list = []
             # iterate steps
-            totalsteps = len(list(inputimages_A))
             progBar = tf.keras.utils.Progbar(totalsteps)
             step = 0
-            discriminator_outputs = None
             for image_A, image_B in tf.data.Dataset.zip((inputimages_A, inputimages_B)):
                 stepstart = time.time()
                 # only update generators every d_iter trainingsteps 
                 update_generators = (step % d_iter) == 0
                 
-                discriminator_outputs = self.train_step(image_A, image_B, update_generators)                
-                
+                losses = self.train_step(image_A, image_B, update_generators)
                 # after each train step, clip weighs of discriminators
                 self._clip_discriminatorWeights(clip_range)
                 progBar.add(1)
-                #print("step %d took: %f seconds" % (step, time.time() - stepstart))
+                 # log losses
+                if (step % steps_before_log )== 0:
+                    losses = [losstensor.numpy() for losstensor in losses]
+                    losses_list.append(losses)
                 step += 1
-                
+            
+            # log losses as html
+            self.log_losses(losses_list, epoch + epochs_already_trained)
+            
             print("\nepoch %d took: %f seconds" % (epoch, time.time() - epochstart))
             # output criticoutputs and losses
-            discriminator_outputs = [tf.math.reduce_mean(discOutput) for discOutput in discriminator_outputs]
-            discA_loss = self._critic_wLoss(discriminator_outputs[0], discriminator_outputs[1])
-            discB_loss = self._critic_wLoss(discriminator_outputs[2], discriminator_outputs[3])
-            print("\n        \treal  \tfake  \tloss")
-            print("criticA:\t%.4f  \t%.4f  %.4f" % (discriminator_outputs[0], discriminator_outputs[1], discA_loss) )
-            print("criticB:\t%.4f  \t%.4f  %.4f" % (discriminator_outputs[2], discriminator_outputs[3], discB_loss) )
+            #discriminator_outputs = [tf.math.reduce_mean(discOutput) for discOutput in discriminator_outputs]
+            #discA_loss = self._critic_wLoss(discriminator_outputs[0], discriminator_outputs[1])
+            #discB_loss = self._critic_wLoss(discriminator_outputs[2], discriminator_outputs[3])
+            #print("\n        \treal  \tfake  \tloss")
+            #print("criticA:\t%.4f  \t%.4f  %.4f" % (discriminator_outputs[0], discriminator_outputs[1], discA_loss) )
+            #print("criticB:\t%.4f  \t%.4f  %.4f" % (discriminator_outputs[2], discriminator_outputs[3], discB_loss) )
 
             # if checkpoint exists, save after every <epochs_before_save> epochs
             if self.checkpoint != None:
-                totalEpochs = self.checkpoint.save_counter * epochs_before_save
+                totalEpochs = (self.checkpoint.save_counter + 1) * epochs_before_save
                 # every <epochs_before_save> epochs,                                                                   
                 if (epoch % epochs_before_save) == 0:
                     # save checkpoint                                                               
@@ -132,7 +178,7 @@ class cyclegan():
                         figureSavepath = self.checkpoint_path / ("sample_epoch_%d.png" % (totalEpochs))
                         figWidth = 8 # in inches <-> 2.54cm
                         figHeight = 2 * n_testimages
-                        plot_comparisonImage(self.gen_AtoB, testimages_A, figWidth, figHeight, figureSavepath)
+                        plot_comparisonImage(self.gen_AtoB, self.gen_BtoA, testimages_A, figWidth, figHeight, figureSavepath)
                     # additionaly calculate fid
                     if not metricsData is None:
                         metricsSavepath = self.checkpoint_path / "FID.txt"
@@ -166,7 +212,7 @@ class cyclegan():
     # encourage criticoutput for generated images to be low (interpreted as realistic by critic)
     ####
     def _generator_wLoss(self, criticOut_gen):
-        return self._lamda_gen * tf.math.reduce_mean(criticOut_gen)
+        return tf.math.reduce_mean(criticOut_gen)
 
     ####
     # for given real image and result of cycling this image ( F(G(real)) ),
@@ -194,6 +240,10 @@ class cyclegan():
             cycle_A = self.gen_BtoA(gen_B, training=True)
             gen_A = self.gen_BtoA(real_B, training=True)
             cycle_B = self.gen_AtoB(gen_A, training=True)
+            # pooled generated images for discriminatorlosses
+            gen_B_pooled = self.update_pool(self.pool_B, gen_B)
+            gen_A_pooled = self.update_pool(self.pool_A, gen_A)
+            
             # identity output
             ident_A = self.gen_BtoA(real_A, training=True)
             ident_B = self.gen_AtoB(real_B, training=True)
@@ -203,11 +253,14 @@ class cyclegan():
             disc_B_real = self.disc_B(real_B, training=True)
             disc_B_fake = self.disc_B(gen_B, training=True)
             
+            disc_A_fake_pooled = self.disc_A(gen_A_pooled, training=True)
+            disc_B_fake_pooled = self.disc_B(gen_B_pooled, training=True) 
+            
                         
             ####
             # discriminator-losses
-            disc_A_loss = self._critic_wLoss(disc_A_real, disc_A_fake)
-            disc_B_loss = self._critic_wLoss(disc_B_real, disc_B_fake)
+            disc_A_loss = self._critic_wLoss(disc_A_real, disc_A_fake_pooled)
+            disc_B_loss = self._critic_wLoss(disc_B_real, disc_B_fake_pooled)
             
             ####
             # generator losses - only when updating generators
@@ -216,10 +269,29 @@ class cyclegan():
                 gen_AtoB_loss = self._generator_wLoss(disc_B_fake)
                 gen_BtoA_loss = self._generator_wLoss(disc_A_fake)
                 # generator cycleloss
-                total_cycle_loss = self._cycle_loss(real_A, cycle_A) + self._cycle_loss(real_B, cycle_B)            
+                cycle_forward_loss = self._cycle_loss(real_A, cycle_A)
+                cycle_backward_loss = self._cycle_loss(real_B, cycle_B)
+                total_cycle_loss = cycle_forward_loss + cycle_backward_loss
+                # generator identity losses
+                ident_B_loss = self._identity_loss(real_B, ident_B)
+                ident_A_loss = self._identity_loss(real_A, ident_A)
                 # total losses
-                total_gen_AtoB_loss = gen_AtoB_loss + total_cycle_loss + self._identity_loss(real_B, ident_B)
-                total_gen_BtoA_loss = gen_BtoA_loss + total_cycle_loss + self._identity_loss(real_A, ident_A)
+                total_gen_AtoB_loss = gen_AtoB_loss + total_cycle_loss + ident_B_loss
+                total_gen_BtoA_loss = gen_BtoA_loss + total_cycle_loss + ident_A_loss
+            else:
+                # generator adversial losses
+                gen_AtoB_loss = 0
+                gen_BtoA_loss = 0
+                # generator cycleloss
+                cycle_forward_loss = 0
+                cycle_backward_loss = 0
+                total_cycle_loss = cycle_forward_loss + cycle_backward_loss
+                # generator identity losses
+                ident_B_loss = 0
+                ident_A_loss = 0
+                # total losses
+                total_gen_AtoB_loss = gen_AtoB_loss + total_cycle_loss + ident_B_loss
+                total_gen_BtoA_loss = gen_BtoA_loss + total_cycle_loss + ident_A_loss
             
         ####
         # update discriminators
@@ -241,8 +313,50 @@ class cyclegan():
             self.gen_AtoB_optimizer.apply_gradients(zip(gen_AtoB_gradients, self.gen_AtoB.trainable_variables))
             self.gen_BtoA_optimizer.apply_gradients(zip(gen_BtoA_gradients, self.gen_BtoA.trainable_variables))
             
-        # critic output is supposed to correlate with imagequality - return them for outputting
-        return (disc_A_real, disc_A_fake, disc_B_real, disc_B_fake)
+        ####
+        # return losses
+        losses = (
+            disc_A_loss, disc_B_loss,
+            total_gen_AtoB_loss, total_gen_BtoA_loss,
+            gen_AtoB_loss, gen_BtoA_loss,
+            cycle_forward_loss, cycle_backward_loss, total_cycle_loss,
+            ident_B_loss, ident_A_loss
+        )
+        return losses
+    
+    ####
+    # save every row of losses in list_losses in csv and html
+    ####
+    def log_losses(self, list_losses, epoch):
+        if self.checkpoint_path is None:
+            return
+        # extra folder for losslogs
+        lossFolder = self.checkpoint_path / "losses"
+        if not lossFolder.exists():
+            lossFolder.mkdir()
+        # log losses of every epoch into one html-file
+        htmlpath = lossFolder / "losses.html"       
+        if not htmlpath.exists():
+            htmlpath.touch()
+        # log losses for every epoch into multiple csv-files
+        csvpath = lossFolder / ( "epoch_%d.csv" % (epoch) )
+        assert not csvpath.exists(), "Log for epoch %d should not exist already" % epoch 
+        
+        labels = [
+            "disc_A_loss", "disc_B_loss",
+            "total_gen_AtoB_loss", "total_gen_BtoA_loss",
+            "gen_AtoB_loss", "gen_BtoA_loss",
+            "cycle_forward_loss", "cycle_backward_loss", "total_cycle_loss",
+            "ident_B_loss", "ident_A_loss"
+        ]
+        df = pd.DataFrame(list_losses, columns=labels)
+        
+        html_text = df.to_html()
+        csv_text = df.to_csv(path_or_buf=csvpath)
+        
+        with htmlpath.open("a") as f:
+            f.write("Epoch %d\n" % (epoch) )
+            f.write(html_text)
         
     ####
     # Generate Images from images in metricsData[0];

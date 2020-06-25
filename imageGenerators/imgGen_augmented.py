@@ -86,19 +86,27 @@ class synth_generator:
     # ranges: ranges of relative vertical offset for each digit (between 0 and 1)
     #            0 := No vertical offset, digit is centered
     #            1 := as much offset so that digit is not visible anymore 
+    # offsets: vertical offsets for each digit. If None, generate randomly from ranges.
     ####
-    def makeImage(self, label, normalstate_range=(-0.2,0.2), midstate_range=(0.3,0.7), resizeTo=None, color=True, rotate=True):
+    def makeImage(self, label, normalstate_range=(-0.2,0.2), midstate_range=(0.3,0.7), resizeTo=None, color=True, rotate=True, offsets=None):
 
         # prepare one image for each digit
         cellImages = []        
-        for digit in label:
-            # calculate random vertical offset
+        for position, digit in enumerate(label):
+            
+            # calculate random vertical offset            
             if digit < 10:
                 y_range = normalstate_range                
             else:
                 y_range = midstate_range
-                digit -= 10            
-            y_relative = random.uniform(y_range[0], y_range[1])
+                digit -= 10     
+                
+            # if offsets given use them, else generate randomly from given ranges
+            if offsets is None:
+                y_relative = random.uniform(y_range[0], y_range[1])
+            else:
+                y_relative = offsets[position]
+                
             if y_relative < 0:
                 digit -= 1
                 y_relative = 1 + y_relative
@@ -143,9 +151,10 @@ class synth_generator:
         
         return result
     
-    def makeImages(self, label_list, normalstate_range=(-0.2,0.2), midstate_range=(0.3,0.7), resizeTo=None, color=True, rotate=True, includeChannels=True):
+    def makeImages(self, label_list, normalstate_range=(-0.2,0.2), midstate_range=(0.3,0.7), resizeTo=None, color=True, rotate=True, includeChannels=True, offsets=None):
+        #import pdb; pdb.set_trace()
         result = np.array([
-            self.makeImage(label, normalstate_range, midstate_range, resizeTo, color, rotate) for label in label_list
+            self.makeImage(label, normalstate_range, midstate_range, resizeTo, color, rotate, offsets[i]) for i, label in enumerate(label_list)
         ])
         if includeChannels:
             shape = [d for d in result.shape]

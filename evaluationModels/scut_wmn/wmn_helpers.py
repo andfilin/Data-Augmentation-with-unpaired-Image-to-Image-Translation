@@ -41,7 +41,7 @@ def loadImage(imgPath, width, height, keepRatio=True):
 
 
 # read wmn-train/testdatafiles containing imagepaths and labels, return images and labels 
-def load_wmn_traindata(width, height, datasetPath = "C:/Users/andre/Desktop/m/datasets/SCUT-WMN DataSet", keepRatio = True):
+def load_wmn_traindata(width, height, datasetPath = "C:/Users/andre/Desktop/m/datasets/SCUT-WMN DataSet", keepRatio = True, n_toLoad = None):
     # load data
     if not isinstance(datasetPath, Path):
         datasetPath = Path(datasetPath)
@@ -49,7 +49,7 @@ def load_wmn_traindata(width, height, datasetPath = "C:/Users/andre/Desktop/m/da
     testfile = datasetPath / "difficult_samples_for_test.txt"
     
     # load trainimages
-    df_train = pd.read_csv(trainfile, sep="[ ,]" ,header=None)
+    df_train = pd.read_csv(trainfile, sep="[ ,]" ,header=None, nrows=n_toLoad)
     
     images_train = np.array([
         loadImage(datasetPath / row[0], width, height, keepRatio) for row in df_train.values
@@ -70,12 +70,12 @@ def load_wmn_traindata(width, height, datasetPath = "C:/Users/andre/Desktop/m/da
     
     return (images_train, labels_train, images_test, labels_test)
 
-def load_easySamples(width, height, datasetPath = "C:/Users/andre/Desktop/m/datasets/SCUT-WMN DataSet", keepRatio=True):
+def load_easySamples(width, height, datasetPath = "C:/Users/andre/Desktop/m/datasets/SCUT-WMN DataSet", keepRatio=True, n_toLoad=None):
     # load data
     if not isinstance(datasetPath, Path):
         datasetPath = Path(datasetPath)
     file = datasetPath / "easy_samples.txt"
-    df = pd.read_csv(file, sep="[ ,]" ,header=None)
+    df = pd.read_csv(file, sep="[ ,]" ,header=None, nrows=n_toLoad)
     
     images = np.array([
         loadImage(datasetPath / row[0], width, height, keepRatio) for row in df.values

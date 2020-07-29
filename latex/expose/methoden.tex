@@ -22,3 +22,19 @@ Idealerweise weist das Modell, welches zusätzlich mit generierten Daten trainie
 Im ersten Anlauf wird aber eher erwartet, dass das Ergebnis nicht so positiv ausfällt. Deshalb seien obige Aufgaben nicht als einmalige Arbeitsschritte anzusehen, 
 sie sollen eher in einem iterativem Prozess abgearbeitet werden. Ist das Endergebnis nicht zufriedenstellend, sollen sowohl die Auswahl der verwendeten
 Image-To-Image Translation Methode, als auch die Trainigsdaten, der Generator synthetischer Bilder und die Implementierung der Image-To-Image Methode überdacht werden.
+
+\section*{Metriken}
+Um die Qualität generierter Bilder während der Entwicklung zu messen wird
+die Metrik FID (Fréchet Inception Distance) \cite{fid} eingesetzt:
+FID ist eine Metrik, welche die Qualität generativer Modelle misst, indem die
+Distanz der Menge generierter Bilder und der Menge realer Bilder berechnet wird.
+Hierzu wird ein vortrainiertes Bildklassifizierungsmodell, das Inception Network, verwendet.
+Je geringer der Wert von FID, desto ähnlicher sind die generierten Bilder den realen Bildern.
+
+Weiterhin kann die Diversität generativer Modelle durch die Metrik LPIPS (Learned Perceptual Image Patch Similarity) \cite{lpips}
+gemessen werden. LPIPS bietet eine Distanzmetrik zwischen einzelnen Bildern.
+Um die Diversität eines generativen Modells zu messen 
+berechnet man zuerst zu einem Input des generativen Modells mehrere Outputs.
+Diese Outputs werden dann durch LPIPS verglichen und der Durchschnitt hieraus gebildet.
+Dies wiederholt man dann für mehrere Inputs und bildet einen Durchschnitt, welcher dann
+die Diversität des Modells wiedergibt.
